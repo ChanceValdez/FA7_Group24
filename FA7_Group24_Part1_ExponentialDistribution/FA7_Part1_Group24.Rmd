@@ -1,0 +1,147 @@
+---
+title: "Formative Assessment 7: Part 1"
+subtitle: "Exponential Distribution (Waiting Time Between Posts)"
+author: 
+  - "Pinili, Nicklaus Vincent"
+  - "Tan, Heinz Nicole"
+  - "Valdez, Chance Jayden"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.path = "figures/", dev = "png", dpi = 150)
+```
+
+## 1. Scenario and data
+
+Our group observed the waiting time (in minutes) between consecutive posts in the One Piyu Community (OPC) Facebook group—an unofficial, student-led online forum. Data collection took place 2026-09-26 from 6:00 PM to 10:05 PM. Posts are timestamped by the minute, so the interval between two posts is recorded in whole minutes.
+
+Posts uploaded simultaneously due to batch approval by administrators were treated as duplicates and kept only once. The raw version with the duplicates is in `data_raw_with_duplicates.csv`, and the cleaned version used below is `data.csv`.
+
+```{r}
+data <- read.csv("data.csv")
+names(data)
+
+x_obs <- data$interval_min[!is.na(data$interval_min)]
+n <- length(x_obs)
+```
+
+We kept `r n + 1` unique posts, which gives `r n` waiting times (the first post has no earlier post), and as such no interval. The observation time lasted 245 minutes (6:00 PM to 10:05 PM).
+
+## 2. Identify the average rate (lambda) of event occurrence per unit of time
+
+```{r}
+ave_interval <- mean(data$interval_min, na.rm = TRUE)
+```
+
+The average waiting time between two consecutive posts is `r ave_interval` minutes.
+
+## 3. Compute key parameters
+
+For $X \sim \text{Exp}(\lambda)$ we have $E[X] = 1/\lambda$ and $\text{Var}(X) = 1/\lambda^2$. So the maximum likelihood estimate is $\hat{\lambda} = 1/\bar{x}$.
+
+```{r}
+lambda <- 1 / ave_interval
+per_hour <- 60 * lambda
+sd_model <- 1 / lambda
+sd_obs <- sd(x_obs)
+```
+
+The average rate of occurences of posts per minute is $\hat{\lambda} =$ `r round(lambda, 4)`. This is equivalent to one post every `r round(1 / lambda, 4)` minutes, or about `r round(per_hour, 1)` posts per hour. Under the model, the standard deviation is $1/\hat\lambda =$ `r round(sd_model, 4)` minutes, while the sample standard deviation is `r round(sd_obs, 4)` minutes.
+
+### Probability Density Function (PDF)
+
+$$f(x) = \lambda e^{-\lambda x}, \quad x \ge 0$$
+
+```{r pdf-plot}
+x <- seq(0, 30, by = 0.1)
+pdf <- lambda * exp(-lambda * x)
+
+plot(x, pdf,
+     type = "l",
+     main = "Exponential Probability Density Function",
+     xlab = "Waiting Time Between Posts (minutes)",
+     ylab = "Density")
+```
+
+The graph shows the exponential probability density function of the waiting time between posts in One Piyu Community, built from a mean interval of `r ave_interval` minutes ($\hat\lambda \approx$ `r round(lambda, 4)` posts per minute). The curve starts at its highest point, about `r round(lambda, 2)` at 0 minutes, and drops steadily as waiting time increases, which means very short gaps between posts are more likely and longer gaps become less observable. The graph suggests posts arrive frequently at a steady average rate of roughly `r round(per_hour)` per hour. 
+
+An exponential distribution has its standard deviation equal to its mean, so the two numbers above being close is a quick (not rigorous) sign that the model is reasonable. The sample value is a bit smaller, so the data are slightly less spread out than a perfect exponential.
+
+### Probabilities from the PDF (area under the curve)
+
+$$P(a \le X \le b) = \int_a^b \lambda e^{-\lambda x}\,dx = e^{-\lambda a} - e^{-\lambda b}$$
+
+```{r}
+p_0to5 <- exp(-lambda * 0) - exp(-lambda * 5)
+p_5to10 <- exp(-lambda * 5) - exp(-lambda * 10)
+p_over10 <- exp(-lambda * 10)
+```
+
+Using the area under the curve, $P(0 \le X \le 5) =$ `r round(p_0to5, 3)`, $P(5 \le X \le 10) =$ `r round(p_5to10, 3)`, and $P(X > 10) =$ `r round(p_over10, 3)`. These three regions cover every possible wait, so they add up to `r round(p_0to5 + p_5to10 + p_over10, 3)`.
+
+### Cumulative Distribution Function (CDF)
+
+$$F(x) = P(X \le x) = 1 - e^{-\lambda x}, \quad x \ge 0$$
+
+```{r cdf-plot}
+cdf <- 1 - exp(-lambda * x)
+
+plot(x, cdf,
+     type = "l",
+     main = "Cumulative Distribution Function",
+     xlab = "Waiting Time Between Posts (minutes)",
+     ylab = "Cumulative Probability")
+
+p5 <- 1 - exp(-lambda * 5)
+p10 <- 1 - exp(-lambda * 10)
+p20 <- 1 - exp(-lambda * 20)
+```
+
+The curve starts at 0 because no waiting time can be shorter than zero minutes, rises steeply at first because short gaps between posts are the most common, and then levels off as it approaches 1, meaning nearly all gaps (`r round(100 * p20, 1)`%) are shorter than 20 minutes. Using $\hat\lambda \approx$ `r round(lambda, 4)`, the probability that the next post arrives within 5 minutes is about `r round(100 * p5)`%, and within 10 minutes it is about `r round(100 * p10)`%, so the chance of waiting more than 10 minutes is only about `r round(100 * (1 - p10))`%.
+
+### Probabilities (using the CDF)
+
+```{r}
+
+p_over10_cdf <- 1 - p10
+
+p5to10 <- p10 - p5
+
+```
+
+Using the CDF, $P(X \le 5) =$ `r round(p5, 3)`, $P(X \le 10) =$ `r round(p10, 3)`, $P(X > 10) = 1 - F(10) =$ `r round(p_over10_cdf, 3)`, and $P(5 < X \le 10) = F(10) - F(5) =$ `r round(p5to10, 3)`.
+
+## 4. Verify that the exponential distribution is applicable
+
+The exponential model assumes that events happen at a constant average rate and independently of each other. Here, we use a histogram to check the observed waiting times against the fitted PDFL.
+
+### Histogram of observed waiting times against the fitted PDF
+
+```{r hist-pdf}
+hist(x_obs,
+     breaks = seq(0, 14, by = 1),
+     freq = FALSE,
+     main = "Observed Waiting Times vs Fitted Exponential PDF",
+     xlab = "Waiting Time Between Posts (minutes)",
+     col = "lightblue",
+     border = "white")
+
+curve(dexp(x, rate = lambda), from = 0, to = 14, add = TRUE, lwd = 2, col = "red")
+```
+
+Based on the histogram, the bars fall from left to right and follow the shape of the red curve, which is what we expect from an exponential distribution. 
+
+## 5. Interpretation and real world implications
+
+From the results, one should expect to wait about `r round(1 / lambda, 2)` minutes for the next post, and about `r round(per_hour, 1)` posts show up in one hour. There is a `r round(100 * p5, 1)`% chance the next post comes within 5 minutes and a `r round(100 * p10, 1)`% chance it comes within 10 minutes. Gaps longer than 10 minutes are rare, at only `r round(100 * p_over10, 1)`%.
+
+For the group admins, this means the page is very active in the evening, so moderators should expect a steady stream of posts to review. A quiet stretch longer than 10 minutes would be unusual.
+
+### Limitations of the Observations:
+
+* Only one evening (about 4 hours) was observed, so the rate may be different on other days or times.
+* Timestamps are in whole minutes, so seconds are unaccounted for.
+* Batch uploads were removed, which slightly raises the average gap. Keeping them would give a higher rate and a heavier cluster near 0.
+* Admin approval or time of day could make the rate change during the evening, which would break the constant rate assumption.
