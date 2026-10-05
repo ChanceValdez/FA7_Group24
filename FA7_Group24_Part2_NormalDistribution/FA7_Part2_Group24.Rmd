@@ -1,0 +1,144 @@
+---
+title: "Formative Assessment 7: Part 2"
+subtitle: "Applying Normal Distribution on Campus"
+author: 
+  - "Valdez, Chance Jayden"
+  - "Tan, Heinz Nicole"
+  - "Pinili, Nicklaus Vincent"
+date: "`r Sys.Date()`"
+output: 
+  beamer_presentation:
+    theme: "Madrid"
+    colortheme: "default"
+    fonttheme: "structurebold"
+    slide_level: 2
+---
+
+## Background 
+
+- The **objective** of this study is to measure and analyze Far Eastern University's facility utilization data using the occupancy proportion $\left(\frac{Occupied}{Capacity}\right)$.
+- **Research Question:** Does campus facility occupancy rate $\left(\frac{Occupied}{Capacity}\right)$ follow a normal distribution, and what do its distribution characteristics reveal about campus space utilization?
+
+## Methodology
+
+```{r, echo=FALSE}
+data <- read.csv("data.csv")
+
+data$Proportion <- as.numeric(data$Proportion)
+```
+
+- The variable being studied is that of the occupancy proportion $\left(\frac{Occupied}{Capacity}\right)$.
+- The gathered sample includes observation data from the FEU Pavilion from 10:00 to 10:30 and the second and third floors of the FEU Library from 12:00 to 1:00. The sample size consists of `r nrow(data)` instances of varying capacities ranging from a maximum of 12 tables to a minimum of 2 or 3.
+
+```{r, echo=FALSE}
+intervals <- cut(data$Proportion, 
+                 breaks = seq(0, 1, by = 0.2), 
+                 labels = c("0.01 - 0.20", 
+                            "0.21 - 0.40", 
+                            "0.41 - 0.60", 
+                            "0.61 - 0.80", 
+                            "0.81 - 1.00"),
+                 include.lowest = TRUE)
+
+table_clean <- as.data.frame(table(intervals))
+colnames(table_clean) <- c("Interval", "Count")
+```
+
+## Frequency Distribution Table
+
+The table below displays the frequency distribution for the calculated proportions across 143 observations. 
+
+\begin{center}
+```{r, echo=FALSE}
+knitr::kable(table_clean, format = "latex", align = "cc")
+```
+\end{center}
+
+## Mean and Standard Deviation
+
+The mean and standard deviation are shown below:
+
+- **Mean:** `r round(mean(data$Proportion, na.rm = TRUE), 4)`
+- **Standard Deviation:** `r round(sd(data$Proportion, na.rm = TRUE), 4)`
+
+## Normal Distribution Construction
+
+The plot below displays the empirical distribution curve overlaid with the normal distribution curve.
+
+```{r, echo=FALSE, fig.align='center', out.width='80%'}
+proportions <- data$Proportion
+mu <- mean(proportions, na.rm = TRUE)
+sigma <- sd(proportions, na.rm = TRUE)
+
+dens <- density(proportions, from = 0, to = 1)
+plot(dens, 
+     main = "Table Occupancy Data vs. dnorm() Curve", 
+     xlab = "Proportion Value", 
+     ylab = "Density", 
+     xlim = c(-0.1, 1.1),
+     ylim = c(0, max(dens$y) * 1.15))
+
+curve(dnorm(x, mean = mu, sd = sigma), add = TRUE, col = "red")
+```
+
+## Percentage of Data Within 1, 2, and 3 Standard Deviations from the Mean
+
+```{r, echo=FALSE}
+pct_1s <- round(mean(abs(proportions - mu) <= 1 * sigma, na.rm = TRUE) * 100, 1)
+pct_2s <- round(mean(abs(proportions - mu) <= 2 * sigma, na.rm = TRUE) * 100, 1)
+pct_3s <- round(mean(abs(proportions - mu) <= 3 * sigma, na.rm = TRUE) * 100, 1)
+```
+
+Based on the occupancy proportion data gathered from the campus facilities, the actual distribution spreads across standard deviation thresholds as follows:
+
+- **Within $\pm 1\sigma$ ($\mu \pm \sigma$):** `r pct_1s`% *(Theoretical: 68.3%)*
+- **Within $\pm 2\sigma$ ($\mu \pm 2\sigma$):** `r pct_2s`% *(Theoretical: 95.4%)*
+- **Within $\pm 3\sigma$ ($\mu \pm 3\sigma$):** `r pct_3s`% *(Theoretical: 99.7%)*
+
+These empirical values can show how close the campus occupancy rate follows a theoretical normal distribution.
+
+## Skewness, Outliers, and Shape
+```{r, echo=FALSE}
+n <- length(proportions)
+
+skewness <- (n / ((n - 1) * (n - 2))) *
+            sum(((proportions - mu) / sigma)^3)
+
+Q1 <- quantile(proportions, 0.25, na.rm = TRUE)
+Q3 <- quantile(proportions, 0.75, na.rm = TRUE)
+IQR_value <- IQR(proportions, na.rm = TRUE)
+
+lower_bound <- Q1 - 1.5 * IQR_value
+upper_bound <- Q3 + 1.5 * IQR_value
+
+outliers <- proportions[
+  proportions < lower_bound |
+  proportions > upper_bound
+]
+
+num_outliers <- length(outliers)
+```
+
+The distribution is approximately symmetric (skewness = `r round(skewness, 4)`), has `r num_outliers` outliers (bounds = `r round(lower_bound, 4)` to `r round(upper_bound, 4)`), and its shape suggests that occupancy proportions are relatively balanced around the mean but are not perfectly normally distributed.
+
+## Findings
+- The data shows that campus occupancy is generally moderate to high, with an approximate symmetric distribution but its not close to a normal distribution.
+- These findings demonstrate that Pavilion and Library utilization varies across observations; thus, scheduling and space allocation can be adjusted for periods of higher occupancy (such as exam seasons) or lower occupancy (such as synchronous learning days).
+- The data can help the university monitor facility utilization and make informed decisions about campus space management.
+- To optimize campus space, the university should implement real-time occupancy tracking and dynamic scheduling that shifts resources during peak exam seasons and utilizes low-occupancy synchronous learning days for maintenance.
+
+## Summary 
+
+- **Sample size:** `r n`
+- **Mean (\(\mu\)):** `r round(mu, 4)`
+- **Standard deviation (\(\sigma\)):** `r round(sigma, 4)`
+- **Skewness:** `r round(skewness, 4)`
+- **\(Q_1\):** `r round(Q1, 4)`
+- **\(Q_3\):** `r round(Q3, 4)`
+- **IQR:** `r round(IQR_value, 4)`
+- **Outlier Bounds:** `r round(lower_bound, 4)` to `r round(upper_bound, 4)`
+- **Number of Outliers:** `r num_outliers`
+- **Within \(\pm1\sigma\):** `r round(pct_1s, 1)`%
+- **Within \(\pm2\sigma\):** `r round(pct_2s, 1)`%
+- **Within \(\pm3\sigma\):** `r round(pct_3s, 1)`%
+- Analysis codes can be found in the .Rmd file!
