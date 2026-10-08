@@ -1,6 +1,6 @@
-# Formative Assessment 7 README
+# README.md
 
-**Group 24**
+**FA 7 - Group 24**
 
 **Authors:** Pinili, Nicklaus Vincent · Tan, Heinz Nicole · Valdez, Chance Jayden
 
